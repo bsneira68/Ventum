@@ -13,7 +13,7 @@ const COLUMN_ID_PRODUCTOS = "board_relation_mknqb0sa"; // Reemplázalo con el ID
 app.post('/webhook', async (req, res) => {
     try {
         const event = req.body.event;
-        console.log("Webhook recibido:", JSON.stringify(event, null, 2));
+        console.log("📩 Webhook recibido:", JSON.stringify(event, null, 2));
 
         const subitemId = event.pulseId;
         let linkedPulseId = null;
@@ -47,7 +47,7 @@ app.post('/webhook', async (req, res) => {
         });
 
         const data = await response.json();
-        console.log("Respuesta de Monday:", JSON.stringify(data, null, 2));
+        console.log("📬 Respuesta de Monday:", JSON.stringify(data, null, 2));
 
         // Validar que la respuesta contenga un nombre válido
         if (!data?.data?.items || !Array.isArray(data.data.items) || data.data.items.length === 0) {
@@ -55,13 +55,16 @@ app.post('/webhook', async (req, res) => {
             return res.status(500).json({ error: "Error al obtener el nombre del ítem relacionado" });
         }
 
-        const newName = data.data.items[0]?.name;
+        let newName = data.data.items[0]?.name;
 
         // Validar que newName sea una cadena antes de usarlo
         if (typeof newName !== "string" || newName.trim() === "") {
             console.error("❌ Error: newName no es una cadena válida:", newName);
             return res.status(500).json({ error: "newName no es una cadena válida" });
         }
+
+        // Escapar caracteres problemáticos en el nombre
+        newName = newName.replace(/["]/g, '\\"');
 
         console.log(`✅ Actualizando subítem ${subitemId} con el nombre: "${newName}"`);
 
@@ -80,7 +83,7 @@ app.post('/webhook', async (req, res) => {
         });
 
         const updateData = await updateResponse.json();
-        console.log("Respuesta de actualización en Monday:", JSON.stringify(updateData, null, 2));
+        console.log("📬 Respuesta de actualización en Monday:", JSON.stringify(updateData, null, 2));
 
         if (!updateData?.data) {
             console.error("❌ Error al actualizar el subítem en Monday.");
@@ -89,7 +92,7 @@ app.post('/webhook', async (req, res) => {
 
         res.sendStatus(200);
     } catch (error) {
-        console.error("❌ Error inesperado:", error);
+        console.error("🔥 Error inesperado:", error);
         res.status(500).json({ error: "Error interno del servidor" });
     }
 });

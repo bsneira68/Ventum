@@ -17,7 +17,8 @@ app.post('/webhook', async (req, res) => {
 
         // 🔹 Validación del "challenge" de Monday
         if (req.body.challenge) {
-            return res.json({ challenge: req.body.challenge });
+            console.log('Enviando challenge de vuelta:', req.body.challenge);
+            return res.status(200).json({ challenge: req.body.challenge });
         }
 
         // 🔹 Extraer datos del webhook

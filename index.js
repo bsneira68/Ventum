@@ -1,29 +1,35 @@
+require('dotenv').config(); // Cargar variables de entorno desde .env
 const express = require('express');
 const axios = require('axios');
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json()); // Habilita JSON en Express
 
-const MONDAY_API_KEY = 'eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjIyMzkxMDkzNCwiYWFpIjoxMSwidWlkIjozMDM2NzU1NSwiaWFkIjoiMjAyMy0wMS0xN1QwMjo0Njo1Mi4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6MTIxMTE2MjIsInJnbiI6InVzZTEifQ.ueBSuBNbdf87DgM7S2pidVOuLW_Z1QGAeIzCnxvsdJM';
+const MONDAY_API_KEY = process.env.MONDAY_API_KEY;
 const MONDAY_API_URL = 'https://api.monday.com/v2';
 const BOARD_ID = 8612909250;
 const COLUMN_ID_PRODUCTOS = "board_relation_mknqb0sa"; // Reemplázalo con el ID real de la columna
+
+// Validación: Verificar que la API key está definida
+if (!MONDAY_API_KEY) {
+    console.error("❌ Error: MONDAY_API_KEY no está definida. Verifica las variables de entorno en Render.");
+    process.exit(1); // Detiene la ejecución si no hay API key
+}
 
 app.post('/webhook', async (req, res) => {
     try {
         const event = req.body.event;
         console.log("📩 Webhook recibido:", JSON.stringify(event, null, 2));
 
-        const subitemId = event.pulseId;
-        let linkedPulseId = null;
-
-        // Validar la estructura de `linkedPulseIds`
-        if (event.value?.linkedPulseIds?.length > 0) {
-            linkedPulseId = event.value.linkedPulseIds[0].linkedPulseId;
-        } else if (event.previousValue?.linkedPulseIds?.length > 0) {
-            linkedPulseId = event.previousValue.linkedPulseIds[0].linkedPulseId;
+        if (!event || !event.pulseId) {
+            console.error("❌ Evento inválido recibido.");
+            return res.status(400).json({ error: "Evento inválido" });
         }
+
+        const subitemId = event.pulseId;
+        let linkedPulseId = event.value?.linkedPulseIds?.[0]?.linkedPulseId || 
+                            event.previousValue?.linkedPulseIds?.[0]?.linkedPulseId;
 
         if (!linkedPulseId) {
             console.error("❌ No se encontró un linkedPulseId en el evento.");
@@ -43,14 +49,14 @@ app.post('/webhook', async (req, res) => {
         const data = response.data;
         console.log("📬 Respuesta de Monday:", JSON.stringify(data, null, 2));
 
-        if (!data?.data?.items || !Array.isArray(data.data.items) || data.data.items.length === 0) {
+        if (!data?.data?.items?.length) {
             console.error("❌ No se pudo obtener el nombre del ítem relacionado.");
             return res.status(500).json({ error: "Error al obtener el nombre del ítem relacionado" });
         }
 
         let newName = data.data.items[0]?.name;
 
-        if (typeof newName !== "string" || newName.trim() === "") {
+        if (!newName || typeof newName !== "string" || newName.trim() === "") {
             console.error("❌ Error: newName no es una cadena válida:", newName);
             return res.status(500).json({ error: "newName no es una cadena válida" });
         }
@@ -61,7 +67,7 @@ app.post('/webhook', async (req, res) => {
 
         // Enviar la actualización a Monday
         const updateQuery = `mutation {
-            change_column_value(item_id: ${subitemId}, board_id: ${event.boardId}, column_id: "name", value: "{\\"text\\": \\\"${newName}\\\"}" )
+            change_column_value(item_id: ${subitemId}, board_id: ${event.boardId}, column_id: "name", value: "{\\"text\\": \\"${newName}\\"}" )
         }`;
 
         const updateResponse = await axios.post(MONDAY_API_URL, { query: updateQuery }, {

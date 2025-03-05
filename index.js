@@ -11,38 +11,42 @@ const BOARD_ID = 8612909250; // ID del tablero en Monday
 const COLUMN_ID_PRODUCTOS = "board_relation_mknqb0sa"; // ID de la columna que activa el webhook
 
 // RUTA DEL WEBHOOK
+const express = require('express');
+const axios = require('axios');
+require('dotenv').config();
+
+const app = express();
+const PORT = 3000;
+
+app.use(express.json());
+
+const MONDAY_API_KEY = process.env.MONDAY_API_KEY; // Usar variables de entorno
+const MONDAY_API_URL = 'https://api.monday.com/v2';
+const BOARD_ID = parseInt(process.env.BOARD_ID, 10); // Tablero principal
+
 app.post('/webhook', async (req, res) => {
     try {
         console.log('Webhook recibido:', JSON.stringify(req.body, null, 2));
 
-        if (req.body.challenge) {
-            console.log('Enviando challenge de vuelta:', req.body.challenge);
-            return res.status(200).json({ challenge: req.body.challenge });
-        }
-
         const { event } = req.body;
-
-        if (!event || !event.pulseId) {
+        if (!event || !event.pulseId || !event.value || !event.value.linkedPulseIds) {
             return res.status(400).json({ error: 'Faltan datos en el webhook' });
         }
 
-        const subitemId = event.pulseId;
-
-        // 🔹 Extraer el ID del ítem vinculado
-        const linkedPulseId =
-            event.value?.linkedPulseIds?.[0]?.linkedPulseId ||
-            event.previousValue?.linkedPulseIds?.[0]?.linkedPulseId;
+        const subitemId = event.pulseId; // ID del subítem que se actualizará
+        const linkedPulseId = event.value.linkedPulseIds[0]?.linkedPulseId; // ID del producto proveedor
 
         if (!linkedPulseId) {
-            return res.status(400).json({ error: 'No se encontró un item vinculado' });
+            console.error('❌ No se encontró linkedPulseId en la relación.');
+            return res.status(400).json({ error: 'No hay productos proveedores vinculados' });
         }
 
-        console.log(`🔎 Buscando nombre del ítem vinculado con ID: ${linkedPulseId}`);
+        console.log(`🔍 Buscando nombre del item relacionado con ID: ${linkedPulseId}`);
 
-        // 🔹 Consulta para obtener el nombre del ítem vinculado
+        // Consulta a Monday para obtener el nombre del producto proveedor
         const queryGetName = `
             query {
-                items(ids: [${linkedPulseId}]) {
+                items(ids: ${linkedPulseId}) {
                     id
                     name
                 }
@@ -55,42 +59,45 @@ app.post('/webhook', async (req, res) => {
             { headers: { Authorization: MONDAY_API_KEY, 'Content-Type': 'application/json' } }
         );
 
-        console.log('🔍 Respuesta de Monday al obtener el nombre:', JSON.stringify(responseGetName.data, null, 2));
+        const itemName = responseGetName.data?.data?.items[0]?.name;
 
-        const newName = responseGetName.data?.data?.items?.[0]?.name;
-
-        if (!newName || typeof newName !== 'string') {
-            console.error('❌ Error: No se obtuvo un nombre válido del ítem vinculado.');
-            return res.status(400).json({ error: 'No se pudo obtener un nombre válido del ítem vinculado' });
+        if (!itemName) {
+            console.error('❌ No se pudo obtener el nombre del item relacionado.');
+            return res.status(400).json({ error: 'No se pudo obtener el nombre del producto proveedor' });
         }
 
-        console.log(`✅ Nombre obtenido: ${newName}`);
-        console.log(`✅ Actualizando subítem ${subitemId} con el nombre: ${newName}`);
+        console.log(`✅ Nombre obtenido: ${itemName}`);
+        console.log(`🔄 Actualizando subítem ${subitemId} con el nombre: ${itemName}`);
 
-        // 🔹 Query para actualizar el nombre del subítem en Monday
+        // Consulta para actualizar el nombre del subítem
         const queryUpdateName = `
             mutation {
                 change_simple_column_value(
                     item_id: ${subitemId},
                     board_id: ${BOARD_ID},
                     column_id: "name",
-                    value: "${newName.replace(/"/g, '\\"')}"
+                    value: "${itemName}"
                 ) {
                     id
                 }
             }
         `;
 
-        const responseUpdate = await axios.post(
+        const responseUpdateName = await axios.post(
             MONDAY_API_URL,
             { query: queryUpdateName },
             { headers: { Authorization: MONDAY_API_KEY, 'Content-Type': 'application/json' } }
         );
 
-        console.log('✅ Nombre del subítem actualizado en Monday:', JSON.stringify(responseUpdate.data, null, 2));
-        res.status(200).json({ message: 'Nombre del subítem actualizado en Monday', data: responseUpdate.data });
+        console.log('✅ Respuesta de Monday al actualizar:', responseUpdateName.data);
+        res.status(200).json({ message: 'Nombre del subítem actualizado en Monday', data: responseUpdateName.data });
+
     } catch (error) {
-        console.error('❌ Error al actualizar en Monday:', error.response?.data || error.message);
+        console.error('❌ Error al actualizar en Monday:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
+});
+
+app.listen(PORT, () => {
+    console.log(`Servidor escuchando en http://localhost:${PORT}`);
 });

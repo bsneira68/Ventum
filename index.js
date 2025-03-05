@@ -33,12 +33,13 @@ app.post('/webhook', async (req, res) => {
             return res.status(400).json({ error: 'No se encontró un item vinculado' });
         }
 
-        console.log(`Buscando nombre del ítem vinculado con ID: ${linkedPulseId}`);
+        console.log(`🔎 Buscando nombre del ítem vinculado con ID: ${linkedPulseId}`);
 
         // 🔹 Consulta para obtener el nombre del ítem vinculado
         const queryGetName = `
             query {
                 items(ids: [${linkedPulseId}]) {
+                    id
                     name
                 }
             }
@@ -50,13 +51,15 @@ app.post('/webhook', async (req, res) => {
             { headers: { Authorization: MONDAY_API_KEY, 'Content-Type': 'application/json' } }
         );
 
-        const newName = responseGetName.data?.data?.items[0]?.name;
+        console.log('🔍 Respuesta de Monday al obtener el nombre:', JSON.stringify(responseGetName.data, null, 2));
 
-        if (!newName) {
-            return res.status(400).json({ error: 'No se pudo obtener el nombre del ítem vinculado' });
+        const newName = responseGetName.data?.data?.items?.[0]?.name;
+
+        if (!newName || typeof newName !== 'string') {
+            return res.status(400).json({ error: 'No se pudo obtener un nombre válido del ítem vinculado' });
         }
 
-        console.log(`Actualizando subítem ${subitemId} con el nombre: ${newName}`);
+        console.log(`✅ Actualizando subítem ${subitemId} con el nombre: ${newName}`);
 
         // 🔹 Query para actualizar el nombre del subítem en Monday
         const queryUpdateName = `

@@ -28,7 +28,7 @@ app.post('/webhook', async (req, res) => {
 
         const subitemId = event.pulseId;
 
-        // 🔹 Intentar obtener el linkedPulseId desde value o previousValue
+        // 🔹 Extraer el ID del ítem vinculado
         const linkedPulseId =
             event.value?.linkedPulseIds?.[0]?.linkedPulseId ||
             event.previousValue?.linkedPulseIds?.[0]?.linkedPulseId;
@@ -60,9 +60,11 @@ app.post('/webhook', async (req, res) => {
         const newName = responseGetName.data?.data?.items?.[0]?.name;
 
         if (!newName || typeof newName !== 'string') {
+            console.error('❌ Error: No se obtuvo un nombre válido del ítem vinculado.');
             return res.status(400).json({ error: 'No se pudo obtener un nombre válido del ítem vinculado' });
         }
 
+        console.log(`✅ Nombre obtenido: ${newName}`);
         console.log(`✅ Actualizando subítem ${subitemId} con el nombre: ${newName}`);
 
         // 🔹 Query para actualizar el nombre del subítem en Monday
@@ -85,7 +87,7 @@ app.post('/webhook', async (req, res) => {
             { headers: { Authorization: MONDAY_API_KEY, 'Content-Type': 'application/json' } }
         );
 
-        console.log('✅ Nombre del subítem actualizado en Monday:', responseUpdate.data);
+        console.log('✅ Nombre del subítem actualizado en Monday:', JSON.stringify(responseUpdate.data, null, 2));
         res.status(200).json({ message: 'Nombre del subítem actualizado en Monday', data: responseUpdate.data });
     } catch (error) {
         console.error('❌ Error al actualizar en Monday:', error.response?.data || error.message);

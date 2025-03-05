@@ -65,14 +65,19 @@ app.post('/webhook', async (req, res) => {
             return res.status(500).json({ error: "newName no es una cadena válida" });
         }
 
-        newName = newName.replace(/"/g, '\\"');
-
         console.log(`✅ Actualizando subítem ${subitemId} con el nombre: "${newName}"`);
 
         // Enviar la actualización a Monday
         const mutation = {
             query: `mutation {
-                change_column_value(item_id: ${subitemId}, board_id: ${BOARD_ID}, column_id: "name", value: "{\\"text\\": \\\"${newName}\\\"}" )
+                change_simple_column_value(
+                    item_id: ${subitemId}, 
+                    board_id: ${BOARD_ID}, 
+                    column_id: "name", 
+                    value: "${newName}"
+                ) {
+                    id
+                }
             }`
         };
 

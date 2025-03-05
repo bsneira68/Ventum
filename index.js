@@ -5,9 +5,9 @@ const PORT = 3000;
 
 app.use(express.json()); // Habilita JSON en Express
 
-const MONDAY_API_KEY = process.env.MONDAY_API_KEY;
+const MONDAY_API_KEY = 'eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjIyMzkxMDkzNCwiYWFpIjoxMSwidWlkIjozMDM2NzU1NSwiaWFkIjoiMjAyMy0wMS0xN1QwMjo0Njo1Mi4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6MTIxMTE2MjIsInJnbiI6InVzZTEifQ.ueBSuBNbdf87DgM7S2pidVOuLW_Z1QGAeIzCnxvsdJM';
 const MONDAY_API_URL = 'https://api.monday.com/v2';
-const BOARD_ID = process.env.BOARD_ID;
+const BOARD_ID = 8612909250;
 const COLUMN_ID_PRODUCTOS = "board_relation_mknqb0sa"; // Reemplázalo con el ID real de la columna
 
 app.post('/webhook', async (req, res) => {

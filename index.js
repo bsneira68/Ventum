@@ -22,12 +22,16 @@ app.post('/webhook', async (req, res) => {
 
         const { event } = req.body;
 
-        if (!event || !event.pulseId || !event.value || !event.value.linkedPulseIds) {
+        if (!event || !event.pulseId) {
             return res.status(400).json({ error: 'Faltan datos en el webhook' });
         }
 
         const subitemId = event.pulseId;
-        const linkedPulseId = event.value.linkedPulseIds[0]?.linkedPulseId; // ID del item vinculado
+
+        // 🔹 Intentar obtener el linkedPulseId desde value o previousValue
+        const linkedPulseId =
+            event.value?.linkedPulseIds?.[0]?.linkedPulseId ||
+            event.previousValue?.linkedPulseIds?.[0]?.linkedPulseId;
 
         if (!linkedPulseId) {
             return res.status(400).json({ error: 'No se encontró un item vinculado' });

@@ -17,6 +17,8 @@ if (!MONDAY_API_KEY) {
     process.exit(1); // Detiene la ejecución si no hay API key
 }
 
+console.log("🔍 MONDAY_API_KEY:", MONDAY_API_KEY ? "Cargada correctamente" : "No definida");
+
 app.post('/webhook', async (req, res) => {
     try {
         const event = req.body.event;
@@ -27,6 +29,8 @@ app.post('/webhook', async (req, res) => {
             return res.status(400).json({ error: "Evento inválido" });
         }
 
+        console.log("📌 ID del tablero recibido:", event.boardId);
+        
         const subitemId = event.pulseId;
         let linkedPulseId = event.value?.linkedPulseIds?.[0]?.linkedPulseId || 
                             event.previousValue?.linkedPulseIds?.[0]?.linkedPulseId;
@@ -66,11 +70,13 @@ app.post('/webhook', async (req, res) => {
         console.log(`✅ Actualizando subítem ${subitemId} con el nombre: "${newName}"`);
 
         // Enviar la actualización a Monday
-        const updateQuery = `mutation {
-            change_column_value(item_id: ${subitemId}, board_id: ${event.boardId}, column_id: "name", value: "{\\"text\\": \\"${newName}\\"}" )
-        }`;
+        const mutation = {
+            query: `mutation {
+                change_column_value(item_id: ${subitemId}, board_id: ${BOARD_ID}, column_id: "name", value: "{\\"text\\": \\\"${newName}\\\"}" )
+            }`
+        };
 
-        const updateResponse = await axios.post(MONDAY_API_URL, { query: updateQuery }, {
+        const updateResponse = await axios.post(MONDAY_API_URL, mutation, {
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": MONDAY_API_KEY
@@ -88,6 +94,9 @@ app.post('/webhook', async (req, res) => {
         res.sendStatus(200);
     } catch (error) {
         console.error("🔥 Error inesperado:", error);
+        if (error.response) {
+            console.error("❌ Error de Monday API:", JSON.stringify(error.response.data, null, 2));
+        }
         res.status(500).json({ error: "Error interno del servidor" });
     }
 });
